@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
- "reflect"
+	"reflect"
 	"slices"
 	"sync"
 	"time"
@@ -373,12 +373,14 @@ func (s *jsonStore) AddExpense(expense Expense) error {
 		expense.Date = time.Now()
 	}
 	for _, existing := range data.Expenses {
-        if existing.ID == expense.ID {
-            if reflect.DeepEqual(existing, expense) { return nil }
-            return fmt.Errorf("expense ID already exists with different content")
-        }
-    }
-    data.Expenses = append(data.Expenses, expense)
+		if existing.ID == expense.ID {
+			if reflect.DeepEqual(existing, expense) {
+				return nil
+			}
+			return fmt.Errorf("expense ID already exists with different content")
+		}
+	}
+	data.Expenses = append(data.Expenses, expense)
 	log.Printf("Added expense with ID %s\n", expense.ID)
 	return s.writeExpensesFile(s.filePath, data)
 }
@@ -480,18 +482,32 @@ func (s *jsonStore) UpdateExpense(id string, expense Expense) error {
 
 // Commit complete snapshots by atomic rename; a crash cannot truncate live JSON.
 func atomicWrite(path string, contents []byte) error {
- f, err := os.CreateTemp(filepath.Dir(path), ".expenseowl-*")
- if err != nil { return err }
- temporary := f.Name()
- defer os.Remove(temporary)
- if err = f.Chmod(0600); err == nil { _, err = f.Write(contents) }
- if err == nil { err = f.Sync() }
- closeErr := f.Close()
- if err != nil { return err }
- if closeErr != nil { return closeErr }
- if err = os.Rename(temporary, path); err != nil { return err }
- directory, err := os.Open(filepath.Dir(path))
- if err != nil { return err }
- defer directory.Close()
- return directory.Sync()
+	f, err := os.CreateTemp(filepath.Dir(path), ".expenseowl-*")
+	if err != nil {
+		return err
+	}
+	temporary := f.Name()
+	defer os.Remove(temporary)
+	if err = f.Chmod(0600); err == nil {
+		_, err = f.Write(contents)
+	}
+	if err == nil {
+		err = f.Sync()
+	}
+	closeErr := f.Close()
+	if err != nil {
+		return err
+	}
+	if closeErr != nil {
+		return closeErr
+	}
+	if err = os.Rename(temporary, path); err != nil {
+		return err
+	}
+	directory, err := os.Open(filepath.Dir(path))
+	if err != nil {
+		return err
+	}
+	defer directory.Close()
+	return directory.Sync()
 }

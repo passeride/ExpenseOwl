@@ -129,7 +129,7 @@ func (h *Handler) ImportCSV(w http.ResponseWriter, r *http.Request) {
 
 		// Check if expense exists by ID, if provided - without doing a clash resolution
 		if idExists {
-			id := record[idIdx]
+			id := strings.TrimSpace(record[idIdx])
 			if _, err := h.storage.GetExpense(id); err == nil {
 				log.Printf("Info: Skipping row %d because expense with ID '%s' already exists\n", i+2, id)
 				skippedCount++
@@ -185,7 +185,9 @@ func (h *Handler) ImportCSV(w http.ResponseWriter, r *http.Request) {
 			Date:     date,
 			Tags:     tags,
 		}
-		if idExists { expense.ID = strings.TrimSpace(record[idIdx]) }
+		if idExists {
+			expense.ID = strings.TrimSpace(record[idIdx])
+		}
 		if err := expense.Validate(); err != nil {
 			log.Printf("Warning: Skipping row %d due to validation error: %v\n", i+2, err)
 			skippedCount++
