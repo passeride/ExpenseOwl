@@ -4,6 +4,7 @@ const colorPalette = [
     '#FB5607', '#38B000', '#9B5DE5', '#F15BB5'
 ];
 const currencyBehaviors = {
+    nok: {symbol: "kr", useComma: true, useDecimals: true, useSpace: true, right: true},
     usd: {symbol: "$", useComma: false, useDecimals: true, useSpace: false, right: false},
     eur: {symbol: "€", useComma: true, useDecimals: true, useSpace: false, right: false},
     gbp: {symbol: "£", useComma: false, useDecimals: true, useSpace: false, right: false},

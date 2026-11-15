@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"sync"
 	"time"
@@ -39,7 +40,7 @@ func InitializeJsonStore(baseConfig SystemConfig) (*jsonStore, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal initial data: %v", err)
 		}
-		if err := os.WriteFile(filePath, data, 0644); err != nil {
+		if err := atomicWrite(filePath, data); err != nil {
 			return nil, fmt.Errorf("failed to create storage file: %v", err)
 		}
 		log.Println("Created expense storage file")
@@ -55,7 +56,7 @@ func InitializeJsonStore(baseConfig SystemConfig) (*jsonStore, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal initial config: %v", err)
 		}
-		if err := os.WriteFile(configPath, data, 0644); err != nil {
+		if err := atomicWrite(configPath, data); err != nil {
 			return nil, fmt.Errorf("failed to create config file: %v", err)
 		}
 		log.Println("Created expense storage config")
@@ -91,7 +92,7 @@ func (s *jsonStore) writeExpensesFile(path string, data *expensesFileData) error
 		return err
 	}
 	log.Println("Wrote expenses file")
-	return os.WriteFile(path, content, 0644)
+	return atomicWrite(path, content)
 }
 
 func (s *jsonStore) readConfigFile(path string) (*Config, error) {
@@ -113,7 +114,7 @@ func (s *jsonStore) writeConfigFile(path string, data *Config) error {
 		return err
 	}
 	log.Println("Wrote config file")
-	return os.WriteFile(path, content, 0644)
+	return atomicWrite(path, content)
 }
 
 // ------------------------------------------------------------
@@ -371,6 +372,14 @@ func (s *jsonStore) AddExpense(expense Expense) error {
 	if expense.Date.IsZero() {
 		expense.Date = time.Now()
 	}
+	for _, existing := range data.Expenses {
+		if existing.ID == expense.ID {
+			if reflect.DeepEqual(existing, expense) {
+				return nil
+			}
+			return fmt.Errorf("expense ID already exists with different content")
+		}
+	}
 	data.Expenses = append(data.Expenses, expense)
 	log.Printf("Added expense with ID %s\n", expense.ID)
 	return s.writeExpensesFile(s.filePath, data)
@@ -469,4 +478,36 @@ func (s *jsonStore) UpdateExpense(id string, expense Expense) error {
 	}
 	log.Printf("Edited expense with ID %s\n", id)
 	return s.writeExpensesFile(s.filePath, data)
+}
+
+// Commit complete snapshots by atomic rename; a crash cannot truncate live JSON.
+func atomicWrite(path string, contents []byte) error {
+	f, err := os.CreateTemp(filepath.Dir(path), ".expenseowl-*")
+	if err != nil {
+		return err
+	}
+	temporary := f.Name()
+	defer os.Remove(temporary)
+	if err = f.Chmod(0600); err == nil {
+		_, err = f.Write(contents)
+	}
+	if err == nil {
+		err = f.Sync()
+	}
+	closeErr := f.Close()
+	if err != nil {
+		return err
+	}
+	if closeErr != nil {
+		return closeErr
+	}
+	if err = os.Rename(temporary, path); err != nil {
+		return err
+	}
+	directory, err := os.Open(filepath.Dir(path))
+	if err != nil {
+		return err
+	}
+	defer directory.Close()
+	return directory.Sync()
 }
