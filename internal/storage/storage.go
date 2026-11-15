@@ -95,7 +95,7 @@ type Expense struct {
 
 func (c *Config) SetBaseConfig() {
 	c.Categories = defaultCategories
-	c.Currency = "usd"
+	c.Currency = "nok"
 	c.StartDate = 1
 	// c.Tags = []string{}
 	c.RecurringExpenses = []RecurringExpense{}
@@ -248,6 +248,7 @@ var defaultCategories = []string{
 }
 
 var SupportedCurrencies = []string{
+	"nok", // Norwegian Krone
 	"usd", // US Dollar
 	"eur", // Euro
 	"gbp", // British Pound

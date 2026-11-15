@@ -185,6 +185,7 @@ func (h *Handler) ImportCSV(w http.ResponseWriter, r *http.Request) {
 			Date:     date,
 			Tags:     tags,
 		}
+		if idExists { expense.ID = strings.TrimSpace(record[idIdx]) }
 		if err := expense.Validate(); err != nil {
 			log.Printf("Warning: Skipping row %d due to validation error: %v\n", i+2, err)
 			skippedCount++
